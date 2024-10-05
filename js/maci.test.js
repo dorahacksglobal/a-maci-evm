@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
+const { groth16 } = require("snarkjs");
 const { poseidon } = require("circom");
-const { stringizing, genKeypair } = require("./keypair");
+const { stringizing, genKeypair, genStaticRandomKey } = require("./keypair");
 const MACI = require("./maci");
 const { genMessage } = require("./client");
 const { proofAddKey } = require("./proofAddKey");
@@ -13,9 +14,12 @@ if (!outputPath) {
   process.exit(1);
 }
 
+const maxVoteOptions = 5;
+
 const main = async () => {
   const USER_1 = 0; // state leaf idx
   const USER_2 = 1; // state leaf idx
+  const USER_1A = 2; // state leaf idx
 
   const privateKeys = [
     111111n, // coordinator
@@ -30,13 +34,13 @@ const main = async () => {
   const user2 = genKeypair(privateKeys[4]);
 
   const main = new MACI(
+    6,
+    3,
     2,
-    1,
-    1,
-    5, // tree config
+    125, // tree config
     privateKeys[0], // coordinator
-    5,
-    10
+    maxVoteOptions,
+    3
   );
 
   main.initStateTree(USER_1, user1.pubKey, 100);
@@ -73,20 +77,20 @@ const main = async () => {
 
   const { input, newDeactivate } = main.processDeactivateMessage(2, 2);
 
-  fs.writeFileSync(
-    path.join(outputPath, "deactivate-input.json"),
-    JSON.stringify(stringizing(input), undefined, 2)
-  );
+  // fs.writeFileSync(
+  //   path.join(outputPath, "deactivate-input.json"),
+  //   JSON.stringify(stringizing(input), undefined, 2)
+  // );
 
-  const dProof = await proofDeactivate({
-    input,
-    size: 2,
-  });
+  // const dProof = await proofDeactivate({
+  //   input,
+  //   size: 2,
+  // });
 
-  logs.push({
-    type: "proofDeactivate",
-    data: dProof,
-  });
+  // logs.push({
+  //   type: "proofDeactivate",
+  //   data: dProof,
+  // });
 
   console.log("proofDeactivate DONE");
 
@@ -96,85 +100,155 @@ const main = async () => {
   // });
 
   // user 1
-  const user12 = genKeypair(privateKeys[5]);
-  const res = await proofAddKey({
-    coordPubKey: coordinator.pubKey,
-    oldKey: user1,
-    deactivates: newDeactivate,
-    dIdx: 0,
-  });
+  const user1a = genKeypair(privateKeys[5]);
+  // const res = await proofAddKey({
+  //   coordPubKey: coordinator.pubKey,
+  //   oldKey: user1,
+  //   deactivates: newDeactivate,
+  //   dIdx: 0,
+  // });
+  // main.initStateTree(USER_1A, user1a.pubKey, 100, res.proof.d);
 
-  fs.writeFileSync(
-    path.join(outputPath, "addnewkey-input.json"),
-    JSON.stringify(stringizing(res.input), undefined, 2)
-  );
+  // fs.writeFileSync(
+  //   path.join(outputPath, "addnewkey-input.json"),
+  //   JSON.stringify(stringizing(res.input), undefined, 2)
+  // );
 
   // console.log(addNewKey);
 
-  logs.push({
-    type: "proofAddNewKey",
-    data: {
-      pubKey: stringizing(user12.pubKey),
-      ...res.nProof,
-    },
-  });
+  // logs.push({
+  //   type: "proofAddNewKey",
+  //   data: {
+  //     pubKey: stringizing(user1a.pubKey),
+  //     ...res.proof,
+  //   },
+  // });
 
   console.log("proofAddNewKey DONE");
 
-  fs.writeFileSync(
-    path.join(outputPath, "input.json"),
-    JSON.stringify(stringizing(input), undefined, 2)
-  );
+  // fs.writeFileSync(
+  //   path.join(outputPath, "input.json"),
+  //   JSON.stringify(stringizing(input), undefined, 2)
+  // );
 
   // VOTE PROCESS
 
-  // const enc1 = genKeypair(privateKeys[2])
-  // const message1 = genMessage(enc1.privKey, coordinator.pubKey)(
-  //   USER_1, 2, 12, 8, user1.pubKey, user1.privKey, 1234567890n
-  // )
-  // main.pushMessage(message1, enc1.pubKey)
+  const message1 = genMessage(enc1.privKey, coordinator.pubKey)(
+    USER_1A,
+    2,
+    1,
+    8,
+    user1a.pubKey,
+    user1a.privKey,
+    1234567890n
+  );
+  main.pushMessage(message1, enc1.pubKey);
 
-  // const enc3 = genKeypair(privateKeys[5])
-  // const message3 = genMessage(enc3.privKey, coordinator.pubKey)(
-  //   USER_2, 1, 8, 5, user2.pubKey, user2.privKey, 1234567890n
-  // )
-  // main.pushMessage(message3, enc3.pubKey)
+  const enc3 = genKeypair(privateKeys[5]);
+  const message3 = genMessage(enc3.privKey, coordinator.pubKey)(
+    USER_2,
+    1,
+    2,
+    5,
+    user2.pubKey,
+    user2.privKey,
+    1234567890n
+  );
+  main.pushMessage(message3, enc3.pubKey);
 
-  // const enc2 = genKeypair(privateKeys[3])
-  // const message2 = genMessage(enc2.privKey, coordinator.pubKey)(
-  //   USER_1, 1, 8, 6, user1.pubKey, user1.privKey, 9876543210n
-  // )
-  // main.pushMessage(message2, enc2.pubKey)
+  const message2 = genMessage(enc2.privKey, coordinator.pubKey)(
+    USER_1A,
+    1,
+    2,
+    6,
+    user1a.pubKey,
+    user1a.privKey,
+    9876543210n
+  );
+  main.pushMessage(message2, enc2.pubKey);
 
-  // main.endVotePeriod()
+  main.endVotePeriod();
 
-  // // PROCESSING
-  // let i = 0
-  // while (main.states === 1) {
-  //   const input = main.processMessage(1234567890n)
+  // PROCESSING
+  let i = 0;
+  while (main.states === 1) {
+    const inputs = [];
+    const input = main.processMessage(
+      genStaticRandomKey(coordinator.privKey, 20041n, BigInt(i)),
+      inputs
+    );
 
-  //   fs.writeFileSync(
-  //     path.join(outputPath, `msg-input_${i.toString().padStart(4, '0')}.json`),
-  //     JSON.stringify(stringizing(input), undefined, 2)
-  //   )
-  //   i++
-  // }
+    // const res = await groth16.fullProve(
+    //   input,
+    //   "./build/msg_js/msg.wasm",
+    //   "./build/zkey/msg_0.zkey"
+    // );
 
-  // // TALLYING
-  // i = 0
-  // while (main.states === 2) {
-  //   const input = main.processTally(1234567890n)
+    // logs.push({
+    //   type: "processMessage",
+    //   data: stringizing({
+    //     proof: res.proof,
+    //     newStateCommitment: input.newStateCommitment,
+    //   }),
+    //   inputs,
+    // });
 
-  //   fs.writeFileSync(
-  //     path.join(outputPath, `tally-input_${i.toString().padStart(4, '0')}.json`),
-  //     JSON.stringify(stringizing(input), undefined, 2)
-  //   )
-  //   i++
-  // }
+    fs.writeFileSync(
+      path.join(outputPath, `msg-input_${i.toString().padStart(4, "0")}.json`),
+      JSON.stringify(stringizing(input), undefined, 2)
+    );
+    i++;
+  }
+
+  // TALLYING
+  i = 0;
+  let salt = 0n;
+  while (main.states === 2) {
+    const inputs = [];
+    const input = main.processTally(
+      genStaticRandomKey(coordinator.privKey, 20042n, BigInt(i)),
+      inputs
+    );
+
+    // const res = await groth16.fullProve(
+    //   input,
+    //   "./build/tally_js/tally.wasm",
+    //   "./build/zkey/tally_0.zkey"
+    // );
+
+    salt = input.newResultsRootSalt;
+
+    // logs.push({
+    //   type: "processTally",
+    //   data: stringizing({
+    //     proof: res.proof,
+    //     newTallyCommitment: input.newTallyCommitment,
+    //   }),
+    //   inputs,
+    // });
+    fs.writeFileSync(
+      path.join(
+        outputPath,
+        `tally-input_${i.toString().padStart(4, "0")}.json`
+      ),
+      JSON.stringify(stringizing(input), undefined, 2)
+    );
+    i++;
+  }
+
+  const results = main.tallyResults.leaves().slice(0, maxVoteOptions);
+
+  logs.push({
+    type: "stopTallyingPeriod",
+    data: stringizing({
+      results,
+      salt,
+    }),
+  });
 
   fs.writeFileSync(
     path.join(outputPath, "logs.json"),
-    JSON.stringify(logs, undefined, 2)
+    JSON.stringify(stringizing(logs), undefined, 2)
   );
 
   console.log("DONE");

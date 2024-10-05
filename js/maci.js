@@ -1,7 +1,12 @@
 const { eddsa, poseidon, poseidonDecrypt } = require("circom");
 const { encryptOdevity, decrypt } = require("./rerandomize");
 const { utils } = require("ethers");
-const { stringizing, genKeypair, genEcdhSharedKey } = require("./keypair");
+const {
+  stringizing,
+  genStaticRandomKey,
+  genKeypair,
+  genEcdhSharedKey,
+} = require("./keypair");
 const Tree = require("./tree");
 
 const SNARK_FIELD_SIZE =
@@ -334,7 +339,11 @@ class MACI {
 
       const sharedKey = genEcdhSharedKey(this.coordinator.privKey, s.pubKey);
 
-      const deactivate = encryptOdevity(!!error, this.coordinator.pubKey);
+      const deactivate = encryptOdevity(
+        !!error,
+        this.coordinator.pubKey,
+        genStaticRandomKey(this.coordinator.privKey, 20040n, newActiveState[i])
+      );
       const dLeaf = [
         deactivate.c1.x,
         deactivate.c1.y,
@@ -369,6 +378,19 @@ class MACI {
     // GEN INPUT JSON =========================================================
     const batchStartHash = this.dMessages[batchStartIdx].prevHash;
     const batchEndHash = this.dMessages[batchEndIdx - 1].hash;
+
+    console.log(
+      "dea",
+      stringizing([
+        newDeactivateRoot,
+        this.pubKeyHasher,
+        batchStartHash,
+        batchEndHash,
+        currentDeactivateCommitment,
+        newDeactivateCommitment,
+        subStateTree.root,
+      ])
+    );
 
     const inputHash =
       BigInt(
@@ -497,7 +519,7 @@ class MACI {
     }
   }
 
-  processMessage(newStateSalt = 0n) {
+  processMessage(newStateSalt = 0n, inputHashPart) {
     if (this.states !== MACI_STATES.PROCESSING) throw new Error("period error");
 
     const batchSize = this.batchSize;
@@ -582,6 +604,8 @@ class MACI {
     const newStateRoot = this.stateTree.root;
     const newStateCommitment = poseidon([newStateRoot, newStateSalt]);
 
+    console.log(newStateRoot, newStateSalt);
+
     // GEN INPUT JSON =========================================================
     const packedVals =
       BigInt(this.maxVoteOptions) + (BigInt(this.numSignUps) << 32n);
@@ -592,21 +616,21 @@ class MACI {
     const deactivateRoot = this.deactivateTree.root;
     const deactivateCommitment = poseidon([activeStateRoot, deactivateRoot]);
 
+    const inputs = stringizing([
+      packedVals,
+      this.pubKeyHasher,
+      batchStartHash,
+      batchEndHash,
+      this.stateCommitment,
+      newStateCommitment,
+      deactivateCommitment,
+    ]);
+    if (inputHashPart) {
+      inputHashPart.push(...inputs);
+    }
     const inputHash =
-      BigInt(
-        utils.soliditySha256(
-          new Array(7).fill("uint256"),
-          stringizing([
-            packedVals,
-            this.pubKeyHasher,
-            batchStartHash,
-            batchEndHash,
-            this.stateCommitment,
-            newStateCommitment,
-            deactivateCommitment,
-          ])
-        )
-      ) % SNARK_FIELD_SIZE;
+      BigInt(utils.soliditySha256(new Array(7).fill("uint256"), inputs)) %
+      SNARK_FIELD_SIZE;
 
     const msgs = messages.map((msg) => msg.ciphertext);
     const encPubKeys = messages.map((msg) => msg.encPubKey);
@@ -664,7 +688,7 @@ class MACI {
     console.log(["Process Finished ".padEnd(60, "="), ""].join("\n"));
   }
 
-  processTally(tallySalt = 0n) {
+  processTally(tallySalt = 0n, inputHashPart) {
     if (this.states !== MACI_STATES.TALLYING) throw new Error("period error");
 
     const batchSize = 5 ** this.intStateTreeDepth;
@@ -721,18 +745,18 @@ class MACI {
     // GEN INPUT JSON =========================================================
     const packedVals = BigInt(this.batchNum) + (BigInt(this.numSignUps) << 32n);
 
+    const inputs = stringizing([
+      packedVals,
+      this.stateCommitment,
+      this.tallyCommitment,
+      newTallyCommitment,
+    ]);
+    if (inputHashPart) {
+      inputHashPart.push(...inputs);
+    }
     const inputHash =
-      BigInt(
-        utils.soliditySha256(
-          new Array(4).fill("uint256"),
-          stringizing([
-            packedVals,
-            this.stateCommitment,
-            this.tallyCommitment,
-            newTallyCommitment,
-          ])
-        )
-      ) % SNARK_FIELD_SIZE;
+      BigInt(utils.soliditySha256(new Array(4).fill("uint256"), inputs)) %
+      SNARK_FIELD_SIZE;
 
     const input = {
       stateRoot: this.stateTree.root,

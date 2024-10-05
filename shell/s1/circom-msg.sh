@@ -15,4 +15,4 @@ time=`echo $start $end | awk '{print $2-$1}'`
 echo -e "\nCompile msg.circom"
 echo "spend time: $time seconds"
 
-exec /bin/bash
+# exec /bin/bash

@@ -1,4 +1,10 @@
-const { babyJub, eddsa, poseidonEncrypt, poseidonDecrypt } = require("circom");
+const {
+  babyJub,
+  eddsa,
+  poseidon,
+  poseidonEncrypt,
+  poseidonDecrypt,
+} = require("circom");
 const crypto = require("crypto");
 const ff = require("ffjavascript");
 const createBlakeHash = require("blake-hash");
@@ -50,14 +56,32 @@ const genRandomKey = () => {
   return privKey;
 };
 
+const genStaticRandomKey = (priSeed, type, index) => {
+  const min =
+    6350874878119819312338956282401532410528162663560392320966563075034087161851n;
+
+  let rand = poseidon([priSeed, type, index]);
+  while (true) {
+    if (rand >= min) {
+      break;
+    }
+
+    rand = poseidon([rand, rand]);
+  }
+
+  // const privKey = rand % SNARK_FIELD_SIZE;
+  const privKey = rand % 2n ** 253n;
+  return privKey;
+};
+
 const genPubKey = (privKey) => {
   // Check whether privKey is a field element
   privKey = BigInt(privKey.toString());
   return eddsa.prv2pub(bigInt2Buffer(privKey));
 };
 
-const genKeypair = (pkey) => {
-  const privKey = pkey || genRandomKey();
+const genKeypair = (pkey = genRandomKey()) => {
+  const privKey = pkey;
   const pubKey = genPubKey(privKey);
   const formatedPrivKey = formatPrivKeyForBabyJub(privKey);
 
@@ -91,6 +115,7 @@ module.exports = {
   stringizing,
   bigInt2Buffer,
   genRandomKey,
+  genStaticRandomKey,
   genKeypair,
   genEcdhSharedKey,
 };

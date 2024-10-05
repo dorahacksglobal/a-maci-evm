@@ -17,4 +17,4 @@ wtns="./wtns/${1}_${2}.wtns"
 
 node "./${1}_js/generate_witness.js" "./${1}_js/${1}.wasm" "./inputs/${1}-input_${2}.json" $wtns
 
-npx snarkjs g16p "./zkey/${1}_1.zkey" $wtns "./outputs/${1}_${2}.json" __temp-public.json
+npx snarkjs g16p "./zkey/${1}_0.zkey" $wtns "./outputs/${1}_${2}.json" __temp-public.json

@@ -86,11 +86,11 @@ module.exports.proofAddKey = async ({
     "./build/zkey/addKey_0.zkey"
   );
 
-  const proof = [];
-  proof.push(...res.proof.pi_a.slice(0, 2));
-  proof.push(...res.proof.pi_b[0].reverse());
-  proof.push(...res.proof.pi_b[1].reverse());
-  proof.push(...res.proof.pi_c.slice(0, 2));
+  // const proof = [];
+  // proof.push(...res.proof.pi_a.slice(0, 2));
+  // proof.push(...res.proof.pi_b[0].reverse());
+  // proof.push(...res.proof.pi_b[1].reverse());
+  // proof.push(...res.proof.pi_c.slice(0, 2));
 
   return stringizing({
     proof: { proof: res.proof, d: [...d1, ...d2], nullifier },
