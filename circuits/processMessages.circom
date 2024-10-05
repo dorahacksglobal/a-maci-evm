@@ -61,6 +61,7 @@ template ProcessMessages(
 
     signal numSignUps;
     signal maxVoteOptions;
+    signal isQuadraticCost;
 
     signal input batchStartHash;
     signal input batchEndHash;
@@ -140,6 +141,7 @@ template ProcessMessages(
     inputHasher.deactivateCommitment <== deactivateCommitment;
 
     // The unpacked values from packedVals
+    inputHasher.isQuadraticCost ==> isQuadraticCost;
     inputHasher.maxVoteOptions ==> maxVoteOptions;
     inputHasher.numSignUps ==> numSignUps;
 
@@ -233,6 +235,7 @@ template ProcessMessages(
     for (var i = batchSize - 1; i >= 0; i --) {
         processors[i] = ProcessOne(stateTreeDepth, voteOptionTreeDepth);
 
+        processors[i].isQuadraticCost <== isQuadraticCost;
         processors[i].coordPrivKey <== coordPrivKey;
 
         processors[i].numSignUps <== numSignUps;
@@ -322,6 +325,7 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
 
     signal input coordPrivKey;
 
+    signal input isQuadraticCost;
     signal input numSignUps;
     signal input maxVoteOptions;
 
@@ -355,6 +359,7 @@ template ProcessOne(stateTreeDepth, voteOptionTreeDepth) {
     // The result is a new state leaf and an isValid signal (0
     // or 1)
     component transformer = StateLeafTransformer();
+    transformer.isQuadraticCost                <== isQuadraticCost;
     transformer.coordPrivKey                   <== coordPrivKey;
     transformer.numSignUps                     <== numSignUps;
     transformer.maxVoteOptions                 <== maxVoteOptions;
@@ -535,16 +540,18 @@ template ProcessMessagesInputHasher() {
     signal input newStateCommitment;
     signal input deactivateCommitment;
 
+    signal output isQuadraticCost;
     signal output maxVoteOptions;
     signal output numSignUps;
     signal output hash;
     
     // 1. Unpack packedVals and ensure that it is valid
-    component unpack = UnpackElement(2);
+    component unpack = UnpackElement(3);
     unpack.in <== packedVals;
 
-    maxVoteOptions <== unpack.out[1];
-    numSignUps <== unpack.out[0];
+    maxVoteOptions <== unpack.out[2];
+    numSignUps <== unpack.out[1];
+    isQuadraticCost <== unpack.out[0];
 
     // 2. Hash coordPubKey
     component pubKeyHasher = HashLeftRight();

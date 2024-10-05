@@ -94,6 +94,8 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
 
     mapping(uint256 => uint256) public singuped;
 
+    bool public isQuadraticCost;
+
     event SignUp(
         uint256 indexed _stateIdx,
         PubKey _userPubKey,
@@ -121,6 +123,7 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
     function init(
         address _admin,
         uint256 _voiceCreditBalance,
+        bool _isQuadraticCost,
         VkRegistry _vkRegistry,
         QuinaryTreeRoot _qtrLib,
         Verifier _verifier,
@@ -130,6 +133,7 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
     ) public atPeriod(Period.Pending) {
         admin = _admin;
         voiceCreditBalance = _voiceCreditBalance;
+        isQuadraticCost = _isQuadraticCost;
         vkRegistry = _vkRegistry;
         qtrLib = _qtrLib;
         verifier = _verifier;
@@ -469,7 +473,10 @@ contract MACI is DomainObjs, SnarkCommon, Ownable {
         uint256 batchSize = parameters.messageBatchSize;
 
         uint256[] memory input = new uint256[](7);
-        input[0] = (numSignUps << uint256(32)) + maxVoteOptions; // packedVals
+        input[0] =
+            (uint256(isQuadraticCost ? 1 : 0) << uint256(64)) +
+            (numSignUps << uint256(32)) +
+            maxVoteOptions; // packedVals
         input[1] = coordinatorHash; // coordPubKeyHash
 
         uint256 batchStartIndex = ((msgChainLength - _processedMsgCount - 1) /
