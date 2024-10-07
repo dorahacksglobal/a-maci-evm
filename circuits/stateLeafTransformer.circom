@@ -54,6 +54,8 @@ template StateLeafTransformer() {
     signal output newSlNonce;
     signal output isValid;
 
+    signal output newBalance;
+
     // Check if the command / message is valid
     component messageValidator = MessageValidator();
     messageValidator.stateTreeIndex <== cmdStateIndex;
@@ -78,6 +80,8 @@ template StateLeafTransformer() {
     // messageValidator.pollEndTimestamp <== pollEndTimestamp;
     messageValidator.currentVotesForOption <== currentVotesForOption;
     messageValidator.voteWeight <== cmdNewVoteWeight;
+
+    newBalance <== messageValidator.newBalance;
 
     component decryptIsActive = ElGamalDecrypt();
     decryptIsActive.c1[0] <== slC1[0];

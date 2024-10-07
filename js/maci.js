@@ -32,7 +32,8 @@ class MACI {
     batchSize,
     coordPriKey,
     maxVoteOptions,
-    numSignUps
+    numSignUps,
+    isQuadraticCost = false
   ) {
     this.stateTreeDepth = stateTreeDepth;
     this.intStateTreeDepth = intStateTreeDepth;
@@ -41,6 +42,7 @@ class MACI {
     this.maxVoteOptions = maxVoteOptions;
     this.voSize = 5 ** voteOptionTreeDepth;
     this.numSignUps = numSignUps;
+    this.isQuadraticCost = isQuadraticCost;
 
     this.coordinator = genKeypair(coordPriKey);
     this.pubKeyHasher = poseidon(this.coordinator.pubKey);
@@ -489,8 +491,14 @@ class MACI {
       return "signature error";
     }
     const currVotes = s.voTree.leaf(voIdx);
-    if (s.balance + currVotes < cmd.newVotes) {
-      return "insufficient balance";
+    if (this.isQuadraticCost) {
+      if (s.balance + currVotes * currVotes < cmd.newVotes * cmd.newVotes) {
+        return "insufficient balance";
+      }
+    } else {
+      if (s.balance + currVotes < cmd.newVotes) {
+        return "insufficient balance";
+      }
     }
   }
 
@@ -584,7 +592,13 @@ class MACI {
       if (!error) {
         // UPDATE STATE =======================================================
         s.pubKey = [...cmd.newPubKey];
-        s.balance = s.balance + currVotes - cmd.newVotes;
+        if (this.isQuadraticCost) {
+          s.balance =
+            s.balance + currVotes * currVotes - cmd.newVotes * cmd.newVotes;
+        } else {
+          s.balance = s.balance + currVotes - cmd.newVotes;
+        }
+        console.log(s.balance);
         s.voTree.updateLeaf(voIdx, cmd.newVotes);
         s.nonce = cmd.nonce;
         s.voted = true;
@@ -608,7 +622,9 @@ class MACI {
 
     // GEN INPUT JSON =========================================================
     const packedVals =
-      BigInt(this.maxVoteOptions) + (BigInt(this.numSignUps) << 32n);
+      BigInt(this.maxVoteOptions) +
+      (BigInt(this.numSignUps) << 32n) +
+      (this.isQuadraticCost ? 1n << 64n : 0n);
     const batchStartHash = this.messages[batchStartIdx].prevHash;
     const batchEndHash = this.messages[batchEndIdx - 1].hash;
 

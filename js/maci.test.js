@@ -34,13 +34,14 @@ const main = async () => {
   const user2 = genKeypair(privateKeys[4]);
 
   const main = new MACI(
-    6,
-    3,
     2,
-    125, // tree config
+    1,
+    1,
+    5, // tree config
     privateKeys[0], // coordinator
     maxVoteOptions,
-    3
+    3,
+    true
   );
 
   main.initStateTree(USER_1, user1.pubKey, 100);
@@ -48,34 +49,34 @@ const main = async () => {
 
   const enc1 = genKeypair(privateKeys[2]);
 
-  const dmessage1 = genMessage(enc1.privKey, coordinator.pubKey)(
-    USER_1,
-    0,
-    0,
-    0,
-    [0n, 0n],
-    user1.privKey,
-    1234567890n
-  );
+  // const dmessage1 = genMessage(enc1.privKey, coordinator.pubKey)(
+  //   USER_1,
+  //   0,
+  //   0,
+  //   0,
+  //   [0n, 0n],
+  //   user1.privKey,
+  //   1234567890n
+  // );
 
-  const enc2 = genKeypair(privateKeys[3]);
+  // const enc2 = genKeypair(privateKeys[3]);
 
-  const dmessage2 = genMessage(enc2.privKey, coordinator.pubKey)(
-    USER_2,
-    0,
-    0,
-    0,
-    [0n, 0n],
-    user2.privKey,
-    1234567890n
-  );
+  // const dmessage2 = genMessage(enc2.privKey, coordinator.pubKey)(
+  //   USER_2,
+  //   0,
+  //   0,
+  //   0,
+  //   [0n, 0n],
+  //   user2.privKey,
+  //   1234567890n
+  // );
 
-  main.pushDeactivateMessage(dmessage1, enc1.pubKey);
-  main.pushDeactivateMessage(dmessage2, enc2.pubKey);
+  // main.pushDeactivateMessage(dmessage1, enc1.pubKey);
+  // main.pushDeactivateMessage(dmessage2, enc2.pubKey);
 
   const logs = main.logs;
 
-  const { input, newDeactivate } = main.processDeactivateMessage(2, 2);
+  // const { input, newDeactivate } = main.processDeactivateMessage(2, 2);
 
   // fs.writeFileSync(
   //   path.join(outputPath, "deactivate-input.json"),
@@ -100,7 +101,7 @@ const main = async () => {
   // });
 
   // user 1
-  const user1a = genKeypair(privateKeys[5]);
+  // const user1a = genKeypair(privateKeys[5]);
   // const res = await proofAddKey({
   //   coordPubKey: coordinator.pubKey,
   //   oldKey: user1,
@@ -134,12 +135,12 @@ const main = async () => {
   // VOTE PROCESS
 
   const message1 = genMessage(enc1.privKey, coordinator.pubKey)(
-    USER_1A,
-    2,
+    USER_1,
+    1,
     1,
     8,
-    user1a.pubKey,
-    user1a.privKey,
+    user1.pubKey,
+    user1.privKey,
     1234567890n
   );
   main.pushMessage(message1, enc1.pubKey);
@@ -149,23 +150,23 @@ const main = async () => {
     USER_2,
     1,
     2,
-    5,
+    12,
     user2.pubKey,
     user2.privKey,
     1234567890n
   );
   main.pushMessage(message3, enc3.pubKey);
 
-  const message2 = genMessage(enc2.privKey, coordinator.pubKey)(
-    USER_1A,
-    1,
-    2,
-    6,
-    user1a.pubKey,
-    user1a.privKey,
-    9876543210n
-  );
-  main.pushMessage(message2, enc2.pubKey);
+  // const message2 = genMessage(enc2.privKey, coordinator.pubKey)(
+  //   USER_1A,
+  //   1,
+  //   2,
+  //   6,
+  //   user1a.pubKey,
+  //   user1a.privKey,
+  //   9876543210n
+  // );
+  // main.pushMessage(message2, enc2.pubKey);
 
   main.endVotePeriod();
 
