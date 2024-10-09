@@ -103,7 +103,6 @@ class MACI {
     const sharedKey = genEcdhSharedKey(this.coordinator.privKey, encPubKey);
     try {
       const plaintext = poseidonDecrypt(ciphertext, sharedKey, 0n, 6);
-      console.log(sharedKey[0]);
       const packaged = plaintext[0];
 
       const nonce = packaged % UINT32;
@@ -562,7 +561,7 @@ class MACI {
       const cmd = commands[i];
       const error = this.checkCommandNow(cmd);
 
-      let stateIdx = 0;
+      let stateIdx = 5 ** this.stateTreeDepth - 1;
       let voIdx = 0;
       if (!error) {
         stateIdx = Number(cmd.stateIdx);
@@ -598,7 +597,6 @@ class MACI {
         } else {
           s.balance = s.balance + currVotes - cmd.newVotes;
         }
-        console.log(s.balance);
         s.voTree.updateLeaf(voIdx, cmd.newVotes);
         s.nonce = cmd.nonce;
         s.voted = true;
@@ -617,8 +615,6 @@ class MACI {
 
     const newStateRoot = this.stateTree.root;
     const newStateCommitment = poseidon([newStateRoot, newStateSalt]);
-
-    console.log(newStateRoot, newStateSalt);
 
     // GEN INPUT JSON =========================================================
     const packedVals =

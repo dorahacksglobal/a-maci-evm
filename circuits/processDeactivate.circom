@@ -249,7 +249,7 @@ template ProcessOne(stateTreeDepth) {
     var PACKED_CMD_LENGTH = 3;
     var TREE_ARITY = 5;
 
-    var MAX_INDEX = 5 ** stateTreeDepth;
+    var MAX_INDEX = TREE_ARITY ** stateTreeDepth;
 
     var STATE_LEAF_LENGTH = 10;
 
