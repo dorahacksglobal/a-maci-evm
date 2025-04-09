@@ -36,6 +36,7 @@ class MACI {
     isQuadraticCost = false
   ) {
     this.stateTreeDepth = stateTreeDepth;
+    this.deactivateTreeDepth = stateTreeDepth + 2;
     this.intStateTreeDepth = intStateTreeDepth;
     this.voteOptionTreeDepth = voteOptionTreeDepth;
     this.batchSize = batchSize;
@@ -65,7 +66,7 @@ class MACI {
     this.stateTree = stateTree;
 
     this.activeStateTree = new Tree(5, stateTreeDepth, 0n);
-    this.deactivateTree = new Tree(5, stateTreeDepth, 0n);
+    this.deactivateTree = new Tree(5, this.deactivateTreeDepth, 0n);
     this.deactivateSize = 0;
     this.dCommands = [];
     this.dMessages = [];
