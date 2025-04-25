@@ -8,6 +8,8 @@ const { genMessage } = require("./client");
 const { proofAddKey } = require("./proofAddKey");
 const { proofDeactivate } = require("./proofDeactivate");
 
+const zkeyPath = "./zkey/2-1-1-5_v3";
+
 const outputPath = process.argv[2];
 if (!outputPath) {
   console.log("no output directory is specified");
@@ -40,7 +42,7 @@ const main = async () => {
     5, // tree config
     privateKeys[0], // coordinator
     maxVoteOptions,
-    3,
+    2,
     true
   );
 
@@ -49,15 +51,15 @@ const main = async () => {
 
   const enc1 = genKeypair(privateKeys[2]);
 
-  // const dmessage1 = genMessage(enc1.privKey, coordinator.pubKey)(
-  //   USER_1,
-  //   0,
-  //   0,
-  //   0,
-  //   [0n, 0n],
-  //   user1.privKey,
-  //   1234567890n
-  // );
+  const dmessage1 = genMessage(enc1.privKey, coordinator.pubKey)(
+    USER_1,
+    0,
+    0,
+    0,
+    [0n, 0n],
+    user1.privKey,
+    1234567890n
+  );
 
   // const enc2 = genKeypair(privateKeys[3]);
 
@@ -71,27 +73,33 @@ const main = async () => {
   //   1234567890n
   // );
 
-  // main.pushDeactivateMessage(dmessage1, enc1.pubKey);
+  main.pushDeactivateMessage(dmessage1, enc1.pubKey);
   // main.pushDeactivateMessage(dmessage2, enc2.pubKey);
 
   const logs = main.logs;
 
-  // const { input, newDeactivate } = main.processDeactivateMessage(2, 2);
+  const { input, newDeactivate } = main.processDeactivateMessage(2, 2);
 
-  // fs.writeFileSync(
-  //   path.join(outputPath, "deactivate-input.json"),
-  //   JSON.stringify(stringizing(input), undefined, 2)
-  // );
+  fs.writeFileSync(
+    path.join(outputPath, "deactivate-input.json"),
+    JSON.stringify(stringizing(input), undefined, 2)
+  );
 
-  // const dProof = await proofDeactivate({
-  //   input,
-  //   size: 2,
-  // });
+  const proof = await groth16.fullProve(
+    input,
+    `${zkeyPath}/deactivate.wasm`,
+    `${zkeyPath}/deactivate.zkey`
+  );
 
-  // logs.push({
-  //   type: "proofDeactivate",
-  //   data: dProof,
-  // });
+  logs.push({
+    type: "proofDeactivate",
+    data: stringizing({
+      proof,
+      size: 1,
+      newDeactivateCommitment: input.newDeactivateCommitment,
+      newDeactivateRoot: input.newDeactivateRoot,
+    }),
+  });
 
   console.log("proofDeactivate DONE");
 
@@ -179,20 +187,20 @@ const main = async () => {
       inputs
     );
 
-    // const res = await groth16.fullProve(
-    //   input,
-    //   "./build/msg_js/msg.wasm",
-    //   "./build/zkey/msg_0.zkey"
-    // );
+    const res = await groth16.fullProve(
+      input,
+      `${zkeyPath}/msg.wasm`,
+      `${zkeyPath}/msg.zkey`
+    );
 
-    // logs.push({
-    //   type: "processMessage",
-    //   data: stringizing({
-    //     proof: res.proof,
-    //     newStateCommitment: input.newStateCommitment,
-    //   }),
-    //   inputs,
-    // });
+    logs.push({
+      type: "processMessage",
+      data: stringizing({
+        proof: res.proof,
+        newStateCommitment: input.newStateCommitment,
+      }),
+      inputs,
+    });
 
     fs.writeFileSync(
       path.join(outputPath, `msg-input_${i.toString().padStart(4, "0")}.json`),
@@ -211,22 +219,23 @@ const main = async () => {
       inputs
     );
 
-    // const res = await groth16.fullProve(
-    //   input,
-    //   "./build/tally_js/tally.wasm",
-    //   "./build/zkey/tally_0.zkey"
-    // );
+    const res = await groth16.fullProve(
+      input,
+      `${zkeyPath}/tally.wasm`,
+      `${zkeyPath}/tally.zkey`
+    );
 
     salt = input.newResultsRootSalt;
 
-    // logs.push({
-    //   type: "processTally",
-    //   data: stringizing({
-    //     proof: res.proof,
-    //     newTallyCommitment: input.newTallyCommitment,
-    //   }),
-    //   inputs,
-    // });
+    logs.push({
+      type: "processTally",
+      data: stringizing({
+        proof: res.proof,
+        newTallyCommitment: input.newTallyCommitment,
+      }),
+      inputs,
+    });
+
     fs.writeFileSync(
       path.join(
         outputPath,
