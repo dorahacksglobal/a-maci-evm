@@ -24,11 +24,12 @@ const rerandomize = (pubKey, ciphertext, randomVal = genRandomKey()) => {
 const SNARK_FIELD_SIZE =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-module.exports.proofAddKey = async ({
+const addKeyInput = ({
   coordPubKey = [],
   oldKey = null,
   deactivates = [],
   dIdx = 0,
+  depth = 4,
 }) => {
   const randomVal = genRandomKey();
   const deactivateLeaf = deactivates[dIdx];
@@ -39,7 +40,7 @@ module.exports.proofAddKey = async ({
 
   const nullifier = poseidon([oldKey.formatedPrivKey, 1444992409218394441042n]);
 
-  const tree = new Tree(5, 2, 0n);
+  const tree = new Tree(5, depth, 0n);
   const leaves = deactivates.map((d) => poseidon(d));
   tree.initLeaves(leaves);
 
@@ -77,6 +78,26 @@ module.exports.proofAddKey = async ({
     nullifier,
     oldPrivateKey: oldKey.formatedPrivKey,
   };
+
+  return { input, d1, d2, nullifier };
+};
+
+module.exports.addKeyInput = addKeyInput;
+
+module.exports.proofAddKey = async ({
+  coordPubKey = [],
+  oldKey = null,
+  deactivates = [],
+  dIdx = 0,
+  depth = 4,
+}) => {
+  const { input, d1, d2, nullifier } = addKeyInput({
+    coordPubKey,
+    oldKey,
+    deactivates,
+    dIdx,
+    depth,
+  });
 
   // console.log(JSON.stringify(stringizing(input)))
 

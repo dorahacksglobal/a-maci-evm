@@ -5,7 +5,7 @@ const { poseidon } = require("circom");
 const { stringizing, genKeypair, genStaticRandomKey } = require("./keypair");
 const MACI = require("./maci");
 const { genMessage } = require("./client");
-const { proofAddKey } = require("./proofAddKey");
+const { addKeyInput } = require("./proofAddKey");
 const { proofDeactivate } = require("./proofDeactivate");
 
 const zkeyPath = "./zkey/2-1-1-5_v3";
@@ -42,7 +42,7 @@ const main = async () => {
     5, // tree config
     privateKeys[0], // coordinator
     maxVoteOptions,
-    2,
+    3,
     true
   );
 
@@ -61,20 +61,20 @@ const main = async () => {
     1234567890n
   );
 
-  // const enc2 = genKeypair(privateKeys[3]);
+  const enc2 = genKeypair(privateKeys[3]);
 
-  // const dmessage2 = genMessage(enc2.privKey, coordinator.pubKey)(
-  //   USER_2,
-  //   0,
-  //   0,
-  //   0,
-  //   [0n, 0n],
-  //   user2.privKey,
-  //   1234567890n
-  // );
+  const dmessage2 = genMessage(enc2.privKey, coordinator.pubKey)(
+    USER_2,
+    0,
+    0,
+    0,
+    [0n, 0n],
+    user2.privKey,
+    1234567890n
+  );
 
   main.pushDeactivateMessage(dmessage1, enc1.pubKey);
-  // main.pushDeactivateMessage(dmessage2, enc2.pubKey);
+  main.pushDeactivateMessage(dmessage2, enc2.pubKey);
 
   const logs = main.logs;
 
@@ -95,7 +95,7 @@ const main = async () => {
     type: "proofDeactivate",
     data: stringizing({
       proof,
-      size: 1,
+      size: 2,
       newDeactivateCommitment: input.newDeactivateCommitment,
       newDeactivateRoot: input.newDeactivateRoot,
     }),
@@ -109,14 +109,24 @@ const main = async () => {
   // });
 
   // user 1
-  // const user1a = genKeypair(privateKeys[5]);
-  // const res = await proofAddKey({
-  //   coordPubKey: coordinator.pubKey,
-  //   oldKey: user1,
-  //   deactivates: newDeactivate,
-  //   dIdx: 0,
-  // });
-  // main.initStateTree(USER_1A, user1a.pubKey, 100, res.proof.d);
+  const user1a = genKeypair(privateKeys[5]);
+  const {
+    input: akInput,
+    d1,
+    d2,
+    nullifier,
+  } = addKeyInput({
+    coordPubKey: coordinator.pubKey,
+    oldKey: user1,
+    deactivates: newDeactivate,
+    dIdx: 0,
+  });
+  const res = await groth16.fullProve(
+    akInput,
+    `${zkeyPath}/addKey.wasm`,
+    `${zkeyPath}/addKey.zkey`
+  );
+  main.initStateTree(USER_1A, user1a.pubKey, 100, [...d1, ...d2]);
 
   // fs.writeFileSync(
   //   path.join(outputPath, "addnewkey-input.json"),
@@ -125,13 +135,15 @@ const main = async () => {
 
   // console.log(addNewKey);
 
-  // logs.push({
-  //   type: "proofAddNewKey",
-  //   data: {
-  //     pubKey: stringizing(user1a.pubKey),
-  //     ...res.proof,
-  //   },
-  // });
+  logs.push({
+    type: "proofAddNewKey",
+    data: stringizing({
+      pubKey: user1a.pubKey,
+      proof: res.proof,
+      d: [...d1, ...d2],
+      nullifier,
+    }),
+  });
 
   console.log("proofAddNewKey DONE");
 
@@ -165,16 +177,16 @@ const main = async () => {
   );
   main.pushMessage(message3, enc3.pubKey);
 
-  // const message2 = genMessage(enc2.privKey, coordinator.pubKey)(
-  //   USER_1A,
-  //   1,
-  //   2,
-  //   6,
-  //   user1a.pubKey,
-  //   user1a.privKey,
-  //   9876543210n
-  // );
-  // main.pushMessage(message2, enc2.pubKey);
+  const message2 = genMessage(enc2.privKey, coordinator.pubKey)(
+    USER_1A,
+    1,
+    2,
+    6,
+    user1a.pubKey,
+    user1a.privKey,
+    9876543210n
+  );
+  main.pushMessage(message2, enc2.pubKey);
 
   main.endVotePeriod();
 
