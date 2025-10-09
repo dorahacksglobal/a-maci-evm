@@ -74,6 +74,11 @@ const genStaticRandomKey = (priSeed, type, index) => {
   return privKey;
 };
 
+/**
+ * 生成一个公钥
+ * @param {bigint} privKey
+ * @returns {bigint[]}
+ */
 const genPubKey = (privKey) => {
   // Check whether privKey is a field element
   privKey = BigInt(privKey.toString());
